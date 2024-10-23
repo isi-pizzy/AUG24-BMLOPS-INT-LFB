@@ -1,0 +1,26 @@
+FROM apache/airflow:2.10.2
+
+USER root
+
+# Install necessary system dependencies
+RUN apt-get update && apt-get install -y gnupg curl
+
+USER airflow
+
+# Copy requirements_airflow.txt to the container
+COPY requirements_airflow.txt .
+
+# Print requirements_airflow.txt to verify it is copied correctly
+RUN echo "=== Printing requirements_airflow.txt ===" && cat requirements_airflow.txt
+
+# Install Python dependencies from requirements_airflow.txt and add logging
+RUN echo "=== Installing Python packages ===" && \
+    pip install --no-cache-dir -r requirements_airflow.txt && \
+    echo "=== Finished installing Python packages ===" || \
+    echo "=== Failed to install Python packages ==="
+
+# Verify the installation of the imbalanced-learn package (and other packages)
+RUN echo "=== Checking installed packages ===" && pip list | grep imbalanced-learn
+
+# Optionally: Show all installed packages
+RUN echo "=== Full list of installed packages ===" && pip list

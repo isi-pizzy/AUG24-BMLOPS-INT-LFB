@@ -1,0 +1,71 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main  
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch: # Allows manual execution of the workflow
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    env:
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      ALGORITHM: ${{ secrets.ALGORITHM }}
+      PYTHONPATH: "."
+      MONGO_URI: ${{ secrets.MONGO_URI }}
+      AIRFLOW_CONN_MONGO_CONN: ${{ secrets.AIRFLOW_CONN_MONGO_CONN }}
+      MONGO_INITDB_ROOT_USERNAME: ${{ secrets.MONGO_INITDB_ROOT_USERNAME }}
+      MONGO_INITDB_ROOT_PASSWORD: ${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}
+      AIRFLOW__CORE__FERNET_KEY: ${{ secrets.AIRFLOW__CORE__FERNET_KEY }}
+      FERNET_KEY: ${{ secrets.FERNET_KEY }}
+      AIRFLOW_HOME: "/opt/airflow"
+      GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+
+    steps:
+      # Check out the code from the repository
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      # Install Flake8 for Linting
+      - name: Install Flake8
+        run: |
+          pip install flake8     
+
+      #Lint the code with Flake8
+      - name: Lint code with Flake8
+        run: |
+          flake8 .      
+        continue-on-error: true  # even if flake8 is unhappy, next steps will start
+
+      # Install Docker and Docker Compose
+      - name: Install Docker and Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker docker-compose
+
+      # Set up and start the Docker Compose services
+      - name: Set up Docker Compose
+        run: docker-compose up -d --build
+
+      # Wait until MongoDB service is available
+      - name: Wait for MongoDB to be ready
+        run: |
+          while ! nc -z localhost 27017; do
+            echo "Waiting for MongoDB..."
+            sleep 1
+          done
+        timeout-minutes: 2
+
+      # Run Pytest in the `api` service container (use the service name, not container name)
+      - name: Run Pytest
+        run: |
+          docker-compose exec -T api pytest -v  # Use -T to prevent TTY error
+
+      # Tear down the Docker Compose services
+      - name: Tear down Docker Compose
+        run: docker-compose down

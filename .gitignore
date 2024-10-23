@@ -1,0 +1,13 @@
+.env
+mongodb.txt
+/data/database.parquet
+**/.ipynb_checkpoints
+/env/
+/venv/
+*.pyc
+__pycache__/
+.vscode/
+airflow.db
+/logs/
+/airflow/logs/
+grafana/
